@@ -133,78 +133,9 @@ class ResturantsController extends ActiveController
         return $bearer;
     }
 
-    public function actionList()
-    {
-        print_r('hi');exit;
-    }
+    
 
-
-    public function actionLogin(){
-        $json=file_get_contents('php://input');
-        $jsonObj=json_decode($json);
-        $pho_no=$jsonObj->pho_no;
-        if(preg_match("/^[0-9]{10}$/",$pho_no)){
-            $getOTP= random_int(100000, 999999);          
-           $objCustomer=new Customer();
-           $objCustomer_login_history=new Customer_login_history();
-           $resCustomer=$objCustomer->find()->where(['mobile_no'=>$pho_no])->andWhere(['status'=>1])->one();
-           if($resCustomer || $resCustomer !=""){
-                $id=$resCustomer['id'];
-               $resCustomer->updated_date=date('Y-m-d H:i:s');
-               $resCustomer->save();
-               $resCustomer_login_history=$objCustomer_login_history->find()->where(['phone_number'=>$pho_no])->andWhere(['customer_id'=>$id])->one();
-               $resCustomer_login_history->customer_id=$id;
-               $resCustomer_login_history->phone_number=$pho_no;
-               $resCustomer_login_history->otp=$getOTP;
-              $resCustomer_login_history->save();
-              return $getOTP;
-           }else{
-                $objCustomer->mobile_no=$pho_no;
-                $objCustomer->created_date=date('Y-d-m H:i:s');
-                $objCustomer->updated_date=date('Y-d-m H:i:s');
-                $objCustomer->save();
-                 $id= Yii::$app->db->getLastInsertID();
-                 $objCustomer_login_history->customer_id=$id;
-                 $objCustomer_login_history->phone_number=$pho_no;
-                 $objCustomer_login_history->otp=$getOTP;
-                 $objCustomer_login_history->save();
-                 return $getOTP;
-           }
-          
-        }else{
-            $this->throwException(411,"Invalid Mobile Number");
-        }
-    }
-
-    public function actionVerifyotp(){
-       // $headers = Yii::$app->request->headers;
-        $otp=Yii::$app->request->post('otp');
-        $pho_no=Yii::$app->request->post('pho_no');
-        $objCustomer_login_history=new Customer_login_history();
-       $resCustomer_login_history=$objCustomer_login_history->find()->where(['otp'=>$otp])->andWhere(['phone_number'=>$pho_no])->one();
-       if($resCustomer_login_history || $resCustomer_login_history!=""){
-        $c_id=$resCustomer_login_history['customer_id'];
-        $usrmodel = new User();
-       print_r($usrmodel->generateAccessToken());exit;
-       //$date=date('Y-m-d H:i:s',$usrmodel->access_token_expired_at);
-       
-
-        $userIP =  Yii::$app->request->userIP;
-        $resCustomer_login_history->loginat=date('Y-d-m H:i:s');
-        $resCustomer_login_history->status=1;
-        $resCustomer_login_history->access_token=$usrmodel->access_token;
-        $resCustomer_login_history->ip_address=$userIP;
-      //  $resCustomer_login_history->save();
-
-       $resCustomer=Customer::find()->where(['mobile_no'=>$pho_no])->andWhere(['id'=>$c_id])->one();
-       print_r($resCustomer);
-
-
-
-       }else{
-              $this->throwException(411,"Invalid OTP");
-       }
-    }
+    
 
     public function actionListstate()
     {   $id= $id=Yii::$app->request->get(name:'id');
@@ -232,7 +163,7 @@ class ResturantsController extends ActiveController
             foreach($resListRestaurants as $val){
                 $rest_Id=$val['id'];
                 $resResturantOffer=$objResturentOffer->getResturantOffers($rest_Id);
-                           
+
                 if(!empty($resResturantOffer)){
                     $val["offers"]=$resResturantOffer;
                 }
@@ -353,10 +284,8 @@ class ResturantsController extends ActiveController
             }
 
         } else {
-
             $this->throwException(404, "Data Not Found");
         }
-
     }
 
     /**
@@ -368,6 +297,14 @@ class ResturantsController extends ActiveController
     private function throwException($errCode, $errMsg)
     {
         throw new \yii\web\HttpException($errCode, $errMsg);
+    }
+     
+    public function validateLatLong($latitude,$longitude){
+            $lat_pattern  = '/\A[+-]?(?:90(?:\.0{1,18})?|\d(?(?<=9)|\d?)\.\d{1,18})\z/x';
+            $long_pattern = '/\A[+-]?(?:180(?:\.0{1,18})?|(?:1[0-7]\d|\d{1,2})\.\d{1,18})\z/x';
+            if(preg_match($lat_pattern, $lat)==1 && preg_match($long_pattern, $long)==1){
+            return 1;
+            }
     }
 
 }

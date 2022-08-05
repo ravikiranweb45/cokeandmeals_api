@@ -18,7 +18,7 @@ use yii\data\SqlDataProvider;
  *
  * @property integer $id
  * @property string $username
- * @property integer $program_id
+ //* @property integer $program_id
  * @property integer $user_role_id
  * @property string $auth_key
  * @property integer $access_token_expired_at
@@ -95,7 +95,7 @@ class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
 
     public static function tableName()
     {
-        return 'user';
+        return 'users';
     }
 
     /** @inheritdoc */
@@ -133,7 +133,7 @@ class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
             'user_role_name' => function ($model) {
                 return isset($model->userRole->role_name) ? $model->userRole->role_name : null;
             },
-            'program_id',
+            //'program_id',
             'username',
             'password_hash',
             'last_login_at',
@@ -757,8 +757,8 @@ class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
         // generate access token
         //        $this->access_token = Yii::$app->security->generateRandomString();
         $tokens = $this->getJWT();
-        $this->device_token = $tokens[0]; // Token
-        $this->access_token_expired_at = date("Y-m-d H:i:s", $tokens[1]['exp']); // Expire
+        $this->access_token = $tokens[0]; // Token
+        $this->access_token_expired_at = date('Y-m-d H:i:s', $tokens[1]['exp']); // Expire
     }
 
     public function beforeSave($insert)
@@ -816,7 +816,8 @@ class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
 
     // And this one if you wish
     protected static function getHeaderToken()
-    {
+    { 
+
         return [];
     }
 
@@ -890,6 +891,7 @@ class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
      */
     public function getJTI()
     {
+        
         return $this->getId();
     }
 
@@ -899,6 +901,7 @@ class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
      */
     public function getJWT()
     {
+        
         // Collect all the data
         $secret = static::getSecretKey();
         $currentTime = time();
@@ -911,6 +914,7 @@ class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
         }
         // Merge token with presets not to miss any params in custom
         // configuration
+        
         $token = array_merge([
             'iat' => $currentTime, // Issued at: timestamp of token issuing.
             'iss' => $hostInfo, // Issuer: A string containing the name or identifier of the issuer application. Can be a domain name and can be used to discard tokens from other applications.
@@ -920,10 +924,12 @@ class User extends \yii\db\ActiveRecord implements \yii\web\IdentityInterface
             'data' => [
                 'username' => $this->username,
                 'lastLoginAt' => $this->last_login_at,
-                'program_id' => $this->program_id,
+              //  'program_id' => $this->program_id,
             ],
         ], static::getHeaderToken());
+        
         // Set up id
+        
         $token['jti'] = $this->getJTI(); // JSON Token ID: A unique string, could be used to validate a token, but goes against not having a centralized issuer authority.
         return [JWT::encode($token, $secret, static::getAlgo()), $token];
     }

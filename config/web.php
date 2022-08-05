@@ -89,7 +89,39 @@ $config = [
                         
                     ],
                 ],
+                [
+                    'class' => 'yii\rest\UrlRule',
+                    'controller' => 'v1/customer',
+                    'pluralize' => false,
+                    'tokens' => [
+                        '{id}' => '<id:\d+>',
+                    ],
+                    'extraPatterns' => [
+                        'OPTIONS {id}' => 'options',
+                     
+                        'POST login' => 'login',
+                        'OPTIONS login' => 'options', 
 
+                        'POST verifyotp' => 'verifyotp',
+                        'OPTIONS verifyotp' => 'options',
+                        
+                    ],
+                ],
+                [
+                    'class' => 'yii\rest\UrlRule',
+                    'controller' => 'v1/state',
+                    'pluralize' => false,
+                    'tokens' => [
+                        '{id}' => '<id:\d+>',
+                    ],
+                    'extraPatterns' => [
+                        'OPTIONS {id}' => 'options',
+                       
+                        'GET liststate' => 'liststate',
+                        'OPTIONS liststate' => 'options',
+                        
+                    ],
+                ],
 
             ],
         ],

@@ -47,8 +47,6 @@ class Restaurant_offer extends \yii\db\ActiveRecord{
 
     public function getNearByResrestaurants($latitude,$longitude){
       $sql="SELECT * FROM ( SELECT id,restaurant_name,restaurant_code,city,latitude,longitude, ( 3959 * acos(cos(RADIANS($latitude)) * cos(radians(latitude::float)) * cos(radians(longitude::float) - radians($longitude)) + sin(RADIANS($latitude)) * sin(radians(latitude::float)))) AS distance FROM restaurants ORDER BY distance ) AS LocationDetails WHERE LocationDetails.distance <= (3*1000) ORDER BY distance LIMIT 10";
-      // $conn=Yii::$app->db;
-      // $resListRestaurants=$conn->createCommand($sql)->queryAll();
       return Yii::$app->db->createCommand($sql)->queryAll();
     }
 
@@ -59,6 +57,5 @@ class Restaurant_offer extends \yii\db\ActiveRecord{
          return Yii::$app->db->createCommand($sql)->queryAll();
 
     }
-    // public function 
 
 }

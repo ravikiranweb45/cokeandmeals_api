@@ -28,6 +28,7 @@ defined('OUTLET_CODE') or define('OUTLET_CODE', 'AND Usr.dummy_rocode::integer I
 defined('TSE_USER_ID') or define ('TSE_USER_ID', 'AND Usr.id IN (174, 176, 179, 367, 368, 371, 428, 431, 479, 711, 787)');
 
 require(__DIR__ . '/../vendor/autoload.php');
+
 require(__DIR__ . '/../vendor/phpqrcode/phpqrcode.php');
 require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');
 
