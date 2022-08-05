@@ -127,9 +127,7 @@ class CustomerController extends ActiveController
     }
 
     public function actionLogin(){
-        $json=file_get_contents('php://input');
-        $jsonObj=json_decode($json);
-        $pho_no=$jsonObj->pho_no;
+        $pho_no=Yii::$app->request->post('pho_no');
         if(preg_match("/^[0-9]{10}$/",$pho_no)){
             $getOTP= random_int(100000, 999999);          
            $objCustomer=new Customer();
@@ -164,7 +162,6 @@ class CustomerController extends ActiveController
     }
 
     public function actionVerifyotp(){
-       
         $otp=Yii::$app->request->post('otp');
         $pho_no=Yii::$app->request->post('pho_no');
         $objCustomer_login_history=new Customer_login_history();
@@ -173,12 +170,11 @@ class CustomerController extends ActiveController
         $c_id=$resCustomer_login_history['customer_id'];
         $usrmodel = new User();
         $usrmodel->generateAccessToken();                                                     
-        $userIP =  Yii::$app->request->userIP;
         $resCustomer_login_history->loginat=date('Y-d-m H:i:s');
         $resCustomer_login_history->status=1;
         $resCustomer_login_history->access_token=$usrmodel->access_token;
-        $resCustomer_login_history->ip_address=$userIP;
-      // $resCustomer_login_history->save();
+        $resCustomer_login_history->ip_address=Yii::$app->request->userIP;;
+      $resCustomer_login_history->save();
 
        $resCustomer=Customer::find()->where(['mobile_no'=>$pho_no])->andWhere(['id'=>$c_id])->one();
        if($resCustomer || $resCustomer!=""){
@@ -186,7 +182,7 @@ class CustomerController extends ActiveController
           $resCustomer->updated_date=date('Y-d-m H:i:s');
           $resCustomer->access_token=$usrmodel->access_token;
           $resCustomer->access_token_expiry=$usrmodel->access_token_expired_at;
-         // $resCustomer->save();
+         $resCustomer->save();
        }
        return $resCustomer;
        }else{
