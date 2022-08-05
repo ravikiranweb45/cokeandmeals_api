@@ -3,7 +3,7 @@
     namespace app\controllers;
 
     use Yii;
-    use yii\base\Object;
+    // use yii\base\Object;
     use yii\web\Controller;
     use yii\web\Response;
 

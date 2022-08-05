@@ -74,6 +74,19 @@ $config = [
                         'OPTIONS {id}' => 'options',
                         'GET list' => 'list',
                         'OPTIONS list' => 'options',
+                        
+                        'GET liststate' => 'liststate',
+                        'OPTIONS liststate' => 'options',
+
+                        'POST nearbyrestaurants' => 'nearbyrestaurants',
+                        'OPTIONS nearbyrestaurants' => 'options',
+
+                        'POST login' => 'login',
+                        'OPTIONS login' => 'options', 
+
+                        'POST verifyotp' => 'verifyotp',
+                        'OPTIONS verifyotp' => 'options',
+                        
                     ],
                 ],
 

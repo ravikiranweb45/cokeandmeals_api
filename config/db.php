@@ -5,7 +5,7 @@ return [
     'dsn' => 'pgsql:host=localhost;dbname=coke_and_meals',
     //'dsn' => 'pgsql:host=localhost;dbname=ks_6_4_2022',
     'username' => 'postgres',
-    'password' => 'bigcity123',
+    'password' => 'bcp',
     'charset' => 'utf8',
     'schemaMap' => [
         'pgsql' => [

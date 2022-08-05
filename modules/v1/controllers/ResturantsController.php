@@ -11,6 +11,14 @@ use yii\filters\AccessControl;
 use yii\filters\auth\CompositeAuth;
 use yii\rest\ActiveController;
 use yii\web\HttpException;
+use app\models\State;
+use app\models\User;
+use app\models\Customer;
+use app\models\Classification;
+use app\models\Offer;
+use app\models\Restaurant_offer;
+use app\models\Restaurant;
+use app\models\Customer_login_history;
 
 class ResturantsController extends ActiveController
 {
@@ -42,7 +50,11 @@ class ResturantsController extends ActiveController
         $behaviors['verbs'] = [
             'class' => \yii\filters\VerbFilter::className(),
             'actions' => [
-                'list' => ['get']
+                'list' => ['get'],
+                'liststate'=>['get'],
+                'nearbyrestaurants'=>['post'],
+                'login'=>['post'],
+                'verifyotp'=>['post'],
             ],
         ];
 
@@ -65,7 +77,7 @@ class ResturantsController extends ActiveController
         // re-add authentication filter
         $behaviors['authenticator'] = $auth;
         // avoid authentication on CORS-pre-flight requests (HTTP OPTIONS method)
-        $behaviors['authenticator']['except'] = ['options', 'list', 'create-state', 'update-state', 'delete-state','import-state', 'get-state-asc'];
+        $behaviors['authenticator']['except'] = ['options', 'list','liststate', 'create-state', 'update-state', 'delete-state','import-state', 'get-state-asc','nearbyrestaurants','login','verifyotp'];
 
         // setup access
         $behaviors['access'] = [
@@ -126,6 +138,112 @@ class ResturantsController extends ActiveController
         print_r('hi');exit;
     }
 
+
+    public function actionLogin(){
+        $json=file_get_contents('php://input');
+        $jsonObj=json_decode($json);
+        $pho_no=$jsonObj->pho_no;
+        if(preg_match("/^[0-9]{10}$/",$pho_no)){
+            $getOTP= random_int(100000, 999999);          
+           $objCustomer=new Customer();
+           $objCustomer_login_history=new Customer_login_history();
+           $resCustomer=$objCustomer->find()->where(['mobile_no'=>$pho_no])->andWhere(['status'=>1])->one();
+           if($resCustomer || $resCustomer !=""){
+                $id=$resCustomer['id'];
+               $resCustomer->updated_date=date('Y-m-d H:i:s');
+               $resCustomer->save();
+               $resCustomer_login_history=$objCustomer_login_history->find()->where(['phone_number'=>$pho_no])->andWhere(['customer_id'=>$id])->one();
+               $resCustomer_login_history->customer_id=$id;
+               $resCustomer_login_history->phone_number=$pho_no;
+               $resCustomer_login_history->otp=$getOTP;
+              $resCustomer_login_history->save();
+              return $getOTP;
+           }else{
+                $objCustomer->mobile_no=$pho_no;
+                $objCustomer->created_date=date('Y-d-m H:i:s');
+                $objCustomer->updated_date=date('Y-d-m H:i:s');
+                $objCustomer->save();
+                 $id= Yii::$app->db->getLastInsertID();
+                 $objCustomer_login_history->customer_id=$id;
+                 $objCustomer_login_history->phone_number=$pho_no;
+                 $objCustomer_login_history->otp=$getOTP;
+                 $objCustomer_login_history->save();
+                 return $getOTP;
+           }
+          
+        }else{
+            $this->throwException(411,"Invalid Mobile Number");
+        }
+    }
+
+    public function actionVerifyotp(){
+       // $headers = Yii::$app->request->headers;
+        $otp=Yii::$app->request->post('otp');
+        $pho_no=Yii::$app->request->post('pho_no');
+        $objCustomer_login_history=new Customer_login_history();
+       $resCustomer_login_history=$objCustomer_login_history->find()->where(['otp'=>$otp])->andWhere(['phone_number'=>$pho_no])->one();
+       if($resCustomer_login_history || $resCustomer_login_history!=""){
+        $c_id=$resCustomer_login_history['customer_id'];
+        $usrmodel = new User();
+       print_r($usrmodel->generateAccessToken());exit;
+       //$date=date('Y-m-d H:i:s',$usrmodel->access_token_expired_at);
+       
+
+        $userIP =  Yii::$app->request->userIP;
+        $resCustomer_login_history->loginat=date('Y-d-m H:i:s');
+        $resCustomer_login_history->status=1;
+        $resCustomer_login_history->access_token=$usrmodel->access_token;
+        $resCustomer_login_history->ip_address=$userIP;
+      //  $resCustomer_login_history->save();
+
+       $resCustomer=Customer::find()->where(['mobile_no'=>$pho_no])->andWhere(['id'=>$c_id])->one();
+       print_r($resCustomer);
+
+
+
+       }else{
+              $this->throwException(411,"Invalid OTP");
+       }
+    }
+
+    public function actionListstate()
+    {   $id= $id=Yii::$app->request->get(name:'id');
+        $objState=new State();
+        if($id){
+            $resState=$objState->find()->where(['id'=>$id])->andWhere(['status'=>1])->all();
+           return $resState;
+        }else{
+            $resState=$objState->find()->andWhere(['status'=>1])->all();
+           return $resState;
+        }
+    }
+
+
+    public function actionNearbyrestaurants(){
+        $latitude=Yii::$app->request->post('latitude');
+        $longitude=Yii::$app->request->post('longitude');
+        //$range = '';
+        //$page = '';
+        $objResturentOffer=new Restaurant_offer();
+        $resListRestaurants=$objResturentOffer->getNearByResrestaurants($latitude,$longitude);
+       
+        $rest_details=array();
+        if(!empty($resListRestaurants)){
+            foreach($resListRestaurants as $val){
+                $rest_Id=$val['id'];
+                $resResturantOffer=$objResturentOffer->getResturantOffers($rest_Id);
+                           
+                if(!empty($resResturantOffer)){
+                    $val["offers"]=$resResturantOffer;
+                }
+                array_push($rest_details,$val );
+            }
+            return $rest_details;
+            
+        }else{
+            $this->throwException(411,"Thier is no restaurants near by you");
+        }
+    } 
   
     public function actionImportState()
     {
