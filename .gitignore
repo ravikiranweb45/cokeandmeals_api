@@ -47,4 +47,49 @@ Thumbs.db
 *.flv
 *.mov
 *.wmv
+/.scannerwork
+/api/.scannerwork
 
+
+
+# windows thumbnail cache
+Thumbs.db
+
+# composer vendor dir
+/api/vendor
+/api/vendor.zip
+
+# composer itself is not needed
+composer.phar
+composer.json
+composer.lock
+
+# Mac DS_Store Files
+.DS_Store
+
+# phpunit itself is not needed
+phpunit.phar
+# local phpunit config
+/api/phpunit.xml
+
+/api/tests/_output/*
+/api/tests/_support/_generated
+/api/runtime
+
+
+# Db Config file
+/api/config/db.php
+
+#sftp
+/api/.vscode/sftp.json
+
+#uploads
+/api/web/uploads
+
+#runtime
+/api/runtime
+
+
+# Db Config file
+/api/config/db.php
+/api/config/db.php
