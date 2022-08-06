@@ -48,6 +48,7 @@ class CustomerController extends ActiveController
             'actions' => [
                 'login'=>['post'],
                 'verifyotp'=>['post'],
+                'editprofile'=>['post'],
             ],
         ];
 
@@ -70,7 +71,7 @@ class CustomerController extends ActiveController
         // re-add authentication filter
         $behaviors['authenticator'] = $auth;
         // avoid authentication on CORS-pre-flight requests (HTTP OPTIONS method)
-        $behaviors['authenticator']['except'] = ['options', 'create-state', 'update-state', 'delete-state','import-state', 'get-state-asc','login','verifyotp'];
+        $behaviors['authenticator']['except'] = ['options', 'create-state', 'update-state', 'delete-state','import-state', 'get-state-asc','login','verifyotp','editprofile'];
 
         // setup access
         $behaviors['access'] = [
@@ -106,25 +107,7 @@ class CustomerController extends ActiveController
         return "ok";
     }
 
-    public function getBearerAccessToken()
-    {
-        $bearer = null;
-        $headers = apache_request_headers();
-        if (isset($headers['Authorization'])) {
-            $matches = array();
-            preg_match('/^Bearer\s+(.*?)$/', $headers['Authorization'], $matches);
-            if (isset($matches[1])) {
-                $bearer = $matches[1];
-            }
-        } elseif (isset($headers['authorization'])) {
-            $matches = array();
-            preg_match('/^Bearer\s+(.*?)$/', $headers['authorization'], $matches);
-            if (isset($matches[1])) {
-                $bearer = $matches[1];
-            }
-        }
-        return $bearer;
-    }
+   
 
     public function actionLogin(){
         $pho_no=Yii::$app->request->post('pho_no');
@@ -190,7 +173,43 @@ class CustomerController extends ActiveController
        }
     }
   
-  
+  public function actionEditprofile(){
+    $pho_no=Yii::$app->request->post('pho_no');
+    $objCustomer=new Customer();
+   $token= $objCustomer->getBearerAccessToken();
+    if(isset($token)){
+        $customerDetails=$objCustomer->getCustomerdetails($token,$pho_no);
+        $access_token_expriy=$customerDetails['access_token_expiry'];
+            if($access_token_expriy !=null || $access_token_expriy>date('Y-m-d H:i:s')){
+                $address=Yii::$app->request->post('address');
+                $email=Yii::$app->request->post('email'); 
+                $customer_name=Yii::$app->request->post('customer_name'); 
+                $dob=Yii::$app->request->post('dob'); 
+                $city=Yii::$app->request->post('city'); 
+                $pincode=Yii::$app->request->post('pincode'); 
+                $gender=Yii::$app->request->post('gender');  
+                $state_id=Yii::$app->request->post('state_id'); 
+                $resCustomer=$objCustomer->editCustomerProfile($objCustomer,$pho_no,$address,$email,$customer_name,$dob,$city,$pincode,$gender,$state_id);
+                
+                // $resCustomer=$objCustomer->find()->where(['mobile_no'=>$pho_no])->one();
+                // $resCustomer->email=$email;
+                // $resCustomer->customer_name=$customer_name;
+                // $resCustomer->address=$address;
+                // $resCustomer->mobile_no=$pho_no;
+                // $resCustomer->dob=$dob;
+                // $resCustomer->city=$city;
+                // $resCustomer->pincode=$pincode;
+                // $resCustomer->gender=$gender;
+                // $resCustomer->state_id=$state_id;
+                // $resCustomer->save();
+                return   $resCustomer;
+            }else{
+                $this->throwException(401, 'Unauthorized user access!');
+            }
+    }else{
+        $this->throwException(422, 'The requested access_token could not be found.');
+    }
+  }
 
     /**
      * Generic function to throw HttpExceptions

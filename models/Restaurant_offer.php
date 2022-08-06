@@ -53,9 +53,19 @@ class Restaurant_offer extends \yii\db\ActiveRecord{
     public function getResturantOffers($rest_Id){
       $sql="SELECT * FROM restaurant_offers AS ro
       JOIN offers AS offers ON (offers.id=ro.offer_id) where ro.restaurant_id =". $rest_Id ;
-      // $resResturantOffer=Yii::$app->db->createCommand($sql)->queryAll(); 
          return Yii::$app->db->createCommand($sql)->queryAll();
 
     }
+
+    public function validateLatLong($latitude,$longitude){
+      // $lat_pattern  = '/\A[+-]?(?:90(?:\.0{1,18})?|\d(?(?<=9)|\d?)\.\d{1,18})\z/x';
+      // $long_pattern = '/\A[+-]?(?:180(?:\.0{1,18})?|(?:1[0-7]\d|\d{1,2})\.\d{1,18})\z/x';
+      $lat_pattern='/^(90|[1-8][0-9]{1,20}|[0-9][.][0-9]{1,20})$/';
+      $long_pattern='/^(180|1[1-7][0-9]{1,20}|[1-9][0-9][.][0-9]{1,20}|[0-9][.][0-9]{1,20})$/';
+      if(preg_match($lat_pattern,$latitude)==1 && preg_match($long_pattern,$longitude)==1){
+      return 1;
+      }
+}
+
 
 }

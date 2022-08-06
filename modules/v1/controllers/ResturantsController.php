@@ -156,21 +156,38 @@ class ResturantsController extends ActiveController
         //$range = '';
         //$page = '';
         $objResturentOffer=new Restaurant_offer();
+        // if($objResturentOffer->validateLatLong($latitude,$longitude)==1){
+        //     $resListRestaurants=$objResturentOffer->getNearByResrestaurants($latitude,$longitude);
+        // $rest_details=array();
+        // if(!empty($resListRestaurants)){
+        //     foreach($resListRestaurants as $val){
+        //         $rest_Id=$val['id'];   
+        //         $resResturantOffer=$objResturentOffer->getResturantOffers($rest_Id);
+        //         if(!empty($resResturantOffer)){
+        //             $val["offers"]=$resResturantOffer;
+        //             array_push($rest_details,$val );
+        //         }else{
+        //             return "No Resturants Found";
+        //         }
+        //     }
+        //     return $rest_details;
+        // }else{
+        //     $this->throwException(411,"Invalid Latitude And Longitude");
+        // }
         $resListRestaurants=$objResturentOffer->getNearByResrestaurants($latitude,$longitude);
-       
         $rest_details=array();
         if(!empty($resListRestaurants)){
             foreach($resListRestaurants as $val){
-                $rest_Id=$val['id'];
+                $rest_Id=$val['id'];   
                 $resResturantOffer=$objResturentOffer->getResturantOffers($rest_Id);
-
                 if(!empty($resResturantOffer)){
                     $val["offers"]=$resResturantOffer;
+                    array_push($rest_details,$val );
+                }else{
+                    return "No Resturants Found";
                 }
-                array_push($rest_details,$val );
             }
             return $rest_details;
-            
         }else{
             $this->throwException(411,"Thier is no restaurants near by you");
         }
@@ -300,8 +317,10 @@ class ResturantsController extends ActiveController
     }
      
     public function validateLatLong($latitude,$longitude){
-            $lat_pattern  = '/\A[+-]?(?:90(?:\.0{1,18})?|\d(?(?<=9)|\d?)\.\d{1,18})\z/x';
-            $long_pattern = '/\A[+-]?(?:180(?:\.0{1,18})?|(?:1[0-7]\d|\d{1,2})\.\d{1,18})\z/x';
+            // $lat_pattern  = '/\A[+-]?(?:90(?:\.0{1,18})?|\d(?(?<=9)|\d?)\.\d{1,18})\z/x';
+            // $long_pattern = '/\A[+-]?(?:180(?:\.0{1,18})?|(?:1[0-7]\d|\d{1,2})\.\d{1,18})\z/x';
+            $lat_pattern='/^[+-]?(90|[1-8][0-9][.][0-9]{1,20}|[0-9][.][0-9]{1,20})$/';
+            $long_pattern='/^-?(180|1[1-7][0-9][.][0-9]{1,20}|[1-9][0-9][.][0-9]{1,20}|[0-9][.][0-9]{1,20})$/';
             if(preg_match($lat_pattern, $lat)==1 && preg_match($long_pattern, $long)==1){
             return 1;
             }

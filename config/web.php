@@ -104,6 +104,9 @@ $config = [
 
                         'POST verifyotp' => 'verifyotp',
                         'OPTIONS verifyotp' => 'options',
+
+                        'POST editprofile' => 'editprofile',
+                        'OPTIONS editprofile' => 'options',
                         
                     ],
                 ],
