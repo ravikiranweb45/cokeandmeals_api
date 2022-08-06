@@ -15,6 +15,7 @@ use app\models\State;
 use app\models\User;
 use app\models\Customer;
 use app\models\Customer_login_history;
+use app\models\Customer_wishlist;
 
 class CustomerController extends ActiveController
 {
@@ -49,6 +50,7 @@ class CustomerController extends ActiveController
                 'login'=>['post'],
                 'verifyotp'=>['post'],
                 'editprofile'=>['post'],
+                'wishlist'=>['post'],
             ],
         ];
 
@@ -71,7 +73,7 @@ class CustomerController extends ActiveController
         // re-add authentication filter
         $behaviors['authenticator'] = $auth;
         // avoid authentication on CORS-pre-flight requests (HTTP OPTIONS method)
-        $behaviors['authenticator']['except'] = ['options', 'create-state', 'update-state', 'delete-state','import-state', 'get-state-asc','login','verifyotp','editprofile'];
+        $behaviors['authenticator']['except'] = ['options', 'create-state', 'update-state', 'delete-state','import-state', 'get-state-asc','login','verifyotp','editprofile','wishlist'];
 
         // setup access
         $behaviors['access'] = [
@@ -190,18 +192,6 @@ class CustomerController extends ActiveController
                 $gender=Yii::$app->request->post('gender');  
                 $state_id=Yii::$app->request->post('state_id'); 
                 $resCustomer=$objCustomer->editCustomerProfile($objCustomer,$pho_no,$address,$email,$customer_name,$dob,$city,$pincode,$gender,$state_id);
-                
-                // $resCustomer=$objCustomer->find()->where(['mobile_no'=>$pho_no])->one();
-                // $resCustomer->email=$email;
-                // $resCustomer->customer_name=$customer_name;
-                // $resCustomer->address=$address;
-                // $resCustomer->mobile_no=$pho_no;
-                // $resCustomer->dob=$dob;
-                // $resCustomer->city=$city;
-                // $resCustomer->pincode=$pincode;
-                // $resCustomer->gender=$gender;
-                // $resCustomer->state_id=$state_id;
-                // $resCustomer->save();
                 return   $resCustomer;
             }else{
                 $this->throwException(401, 'Unauthorized user access!');
@@ -210,6 +200,32 @@ class CustomerController extends ActiveController
         $this->throwException(422, 'The requested access_token could not be found.');
     }
   }
+
+  public function actionWishlist(){
+   $pho_no= Yii::$app->request->post(name:'pho_no');
+   $objCustomer=new Customer();
+   $token= $objCustomer->getBearerAccessToken();
+    if(isset($token)){
+        $customerDetails=$objCustomer->getCustomerdetails($token,$pho_no);
+        $access_token_expriy=$customerDetails['access_token_expiry'];
+            if($access_token_expriy !=null || $access_token_expriy>date('Y-m-d H:i:s')){
+               $resturant_id= Yii::$app->request->post(name:'resturant_id');
+               $offer_id= Yii::$app->request->post(name:'offer_id');
+               $objWishlist=new Customer_wishlist();
+            
+                $resWishlist['details']=$objWishlist->customer_wishlist_resturant($resturant_id,$offer_id);
+                $c_id=$objWishlist->get_customer_id($objCustomer,$pho_no);  
+               $resWishlist['message']=$objWishlist->customer_wishlist($objWishlist,$c_id,$resturant_id);
+               return $resWishlist;
+            }else{
+                $this->throwException(401, 'Unauthorized user access!');
+            }
+    }else{
+        $this->throwException(411,'The requested access_token could not be found.');
+    }
+   
+  }
+
 
     /**
      * Generic function to throw HttpExceptions

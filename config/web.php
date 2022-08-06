@@ -107,6 +107,9 @@ $config = [
 
                         'POST editprofile' => 'editprofile',
                         'OPTIONS editprofile' => 'options',
+
+                        'POST wishlist' => 'wishlist',
+                        'OPTIONS wishlist' => 'options',
                         
                     ],
                 ],
