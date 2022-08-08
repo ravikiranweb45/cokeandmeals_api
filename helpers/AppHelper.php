@@ -8,6 +8,17 @@ use Yii;
 class AppHelper
 {
 
+    public function getUniqueRandomNum(){
+        function make_seed()
+        {
+            list($usec, $sec) = explode(' ', microtime());
+            return $sec + $usec * 1000000;
+        }
+        srand(make_seed());
+        $randval = mt_rand(100000,999999);
+        return $randval;
+    }
+
     public function getDecryptdata($string){
 
         $privatefile = realpath(Yii::$app->basePath) .'/web/uploads/files/rsa_1024_priv.pem';
