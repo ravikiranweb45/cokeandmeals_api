@@ -19,9 +19,7 @@ class Customer_login_history extends \yii\db\ActiveRecord{
     /** @inheritdoc */
     public function rules(){
         return[
-          [['phone_number'],'required'],
-       //   [['customer_id','ip_address','access_token'],'string'],
-          [['status','phone_number'],'integer'],
+          [['status','phone_number','customer_id'],'integer'],
           [['loginat',],'safe'],
 
       ];
@@ -40,6 +38,18 @@ class Customer_login_history extends \yii\db\ActiveRecord{
           'ip_address' => 'ip_address',
           
         ];
+    }
+
+    public function verifyOTP($customer_id,$otp){
+      $sql = "SELECT clh.id,clh.customer_id,clh.phone_number,clh.otp, c.customer_name
+              FROM customer_login_history as clh
+              Join customers as c on (c.id = clh.customer_id)
+              WHERE clh.status = 0 AND clh.customer_id = ".$customer_id." AND clh.otp = '".$otp."' ORDER BY id DESC LIMIT 1";
+        $data= Yii::$app->db->createCommand($sql)->queryOne();
+        if(isset($data) && !empty($data))
+            return $data;
+        else
+            return 0;
     }
 
 }

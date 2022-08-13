@@ -29,7 +29,7 @@ defined('TSE_USER_ID') or define ('TSE_USER_ID', 'AND Usr.id IN (174, 176, 179, 
 
 require(__DIR__ . '/../vendor/autoload.php');
 
-require(__DIR__ . '/../vendor/phpqrcode/phpqrcode.php');
+//require(__DIR__ . '/../vendor/phpqrcode/phpqrcode.php');
 require(__DIR__ . '/../vendor/yiisoft/yii2/Yii.php');
 
 

@@ -11,6 +11,8 @@ use yii\filters\AccessControl;
 use yii\filters\auth\CompositeAuth;
 use yii\rest\ActiveController;
 use yii\web\HttpException;
+use app\helpers\AppHelper;
+use app\models\Message;
 use app\models\State;
 use app\models\User;
 use app\models\Customer;
@@ -24,7 +26,6 @@ class CustomerController extends ActiveController
     public function __construct($id, $module, $config = [])
     {
         parent::__construct($id, $module, $config);
-
     }
 
     public function actions()
@@ -47,10 +48,11 @@ class CustomerController extends ActiveController
         $behaviors['verbs'] = [
             'class' => \yii\filters\VerbFilter::className(),
             'actions' => [
-                'login'=>['post'],
-                'verifyotp'=>['post'],
-                'editprofile'=>['post'],
-                'wishlist'=>['post'],
+                'login' => ['post'],
+                'verifyotp' => ['post'],
+                'editprofile' => ['post'],
+                'toggle-wishlist' => ['post'],
+                'redeem-offer' => ['post'],
             ],
         ];
 
@@ -73,7 +75,7 @@ class CustomerController extends ActiveController
         // re-add authentication filter
         $behaviors['authenticator'] = $auth;
         // avoid authentication on CORS-pre-flight requests (HTTP OPTIONS method)
-        $behaviors['authenticator']['except'] = ['options', 'create-state', 'update-state', 'delete-state','import-state', 'get-state-asc','login','verifyotp','editprofile','wishlist'];
+        $behaviors['authenticator']['except'] = ['options', 'create-state', 'update-state', 'delete-state', 'import-state', 'get-state-asc', 'login', 'verifyotp', 'editprofile', 'toggle-wishlist','redeem-offer'];
 
         // setup access
         $behaviors['access'] = [
@@ -109,123 +111,232 @@ class CustomerController extends ActiveController
         return "ok";
     }
 
-   
+    public function getBearerAccessToken()
+    {
+        $bearer = null;
+        $headers = apache_request_headers();
+        if (isset($headers['Authorization'])) {
+            $matches = array();
+            preg_match('/^Bearer\s+(.*?)$/', $headers['Authorization'], $matches);
+            if (isset($matches[1])) {
+                $bearer = $matches[1];
+            }
+        } elseif (isset($headers['authorization'])) {
+            $matches = array();
+            preg_match('/^Bearer\s+(.*?)$/', $headers['authorization'], $matches);
+            if (isset($matches[1])) {
+                $bearer = $matches[1];
+            }
+        }
+        return $bearer;
+    }
 
-    public function actionLogin(){
-        $pho_no=Yii::$app->request->post('pho_no');
-        if(preg_match("/^[0-9]{10}$/",$pho_no)){
-            $getOTP= random_int(100000, 999999);          
-           $objCustomer=new Customer();
-           $objCustomer_login_history=new Customer_login_history();
-           $resCustomer=$objCustomer->find()->where(['mobile_no'=>$pho_no])->andWhere(['status'=>1])->one();
-           if($resCustomer || $resCustomer !=""){
-                $id=$resCustomer['id'];
-               $resCustomer->updated_date=date('Y-m-d H:i:s');
-               $resCustomer->save();
-               $resCustomer_login_history=$objCustomer_login_history->find()->where(['phone_number'=>$pho_no])->andWhere(['customer_id'=>$id])->one();
-               $resCustomer_login_history->customer_id=$id;
-               $resCustomer_login_history->phone_number=$pho_no;
-               $resCustomer_login_history->otp=$getOTP;
-              $resCustomer_login_history->save();
-              return $getOTP;
-           }else{
-                $objCustomer->mobile_no=$pho_no;
-                $objCustomer->created_date=date('Y-d-m H:i:s');
-                $objCustomer->updated_date=date('Y-d-m H:i:s');
+    public function actionLogin()
+    {
+        $pho_no = Yii::$app->request->post('pho_no');
+
+        if (preg_match("/^[0-9]{10}$/", $pho_no)) {
+            
+            $objCustomer = new Customer();
+            $objCustomer_login_history = new Customer_login_history();
+            $resCustomer = $objCustomer->find()->where(['mobile_no' => $pho_no])->one();
+
+            $message     = new Message();
+           // $checkOTP = $message->otpWithinTwoMins($pho_no);
+
+            if (($resCustomer || !empty($resCustomer)) && $resCustomer['status'] == 1) {
+                $id = $resCustomer['id'];
+                $resCustomer->updated_date = date('Y-m-d H:i:s');
+                $resCustomer->save();
+            }elseif(($resCustomer || !empty($resCustomer)) && $resCustomer['status'] == 0){
+                throw new HttpException(422, "Contact Number is blocked. Contact 9999900001 to activate!");
+            } else {
+                $objCustomer->mobile_no = $pho_no;
+                $objCustomer->created_date = date('Y-d-m H:i:s');
+                $objCustomer->updated_date = date('Y-d-m H:i:s');
                 $objCustomer->save();
-                 $id= Yii::$app->db->getLastInsertID();
-                 $objCustomer_login_history->customer_id=$id;
-                 $objCustomer_login_history->phone_number=$pho_no;
-                 $objCustomer_login_history->otp=$getOTP;
-                 $objCustomer_login_history->save();
-                 return $getOTP;
-           }
-          
-        }else{
-            $this->throwException(411,"Invalid Mobile Number");
+                $id = Yii::$app->db->getLastInsertID();
+            }
+            $getOTP = $this->generateOTP($pho_no);
+
+            $objCustomer_login_history->customer_id = $id;
+            $objCustomer_login_history->phone_number = $pho_no;
+            $objCustomer_login_history->otp = $getOTP;
+            if($objCustomer_login_history->save()){
+                $responseData = [
+                    'customer_id' => $id,
+                    'mobile_no'   => $pho_no,
+                    //'otp'         => md5($getOTP),
+                    'otp'         => $getOTP,
+
+                ];
+            }
+            
+            return $responseData;
+        } else {
+            $this->throwException(411, "Invalid Contact Number");
         }
     }
 
-    public function actionVerifyotp(){
-        $otp=Yii::$app->request->post('otp');
-        $pho_no=Yii::$app->request->post('pho_no');
-        $objCustomer_login_history=new Customer_login_history();
-       $resCustomer_login_history=$objCustomer_login_history->find()->where(['otp'=>$otp])->andWhere(['phone_number'=>$pho_no])->one();
-       if($resCustomer_login_history || $resCustomer_login_history!=""){
-        $c_id=$resCustomer_login_history['customer_id'];
-        $usrmodel = new User();
-        $usrmodel->generateAccessToken();                                                     
-        $resCustomer_login_history->loginat=date('Y-d-m H:i:s');
-        $resCustomer_login_history->status=1;
-        $resCustomer_login_history->access_token=$usrmodel->access_token;
-        $resCustomer_login_history->ip_address=Yii::$app->request->userIP;;
-      $resCustomer_login_history->save();
-
-       $resCustomer=Customer::find()->where(['mobile_no'=>$pho_no])->andWhere(['id'=>$c_id])->one();
-       if($resCustomer || $resCustomer!=""){
-          $resCustomer->created_date=date('Y-d-m H:i:s');
-          $resCustomer->updated_date=date('Y-d-m H:i:s');
-          $resCustomer->access_token=$usrmodel->access_token;
-          $resCustomer->access_token_expiry=$usrmodel->access_token_expired_at;
-         $resCustomer->save();
-       }
-       return $resCustomer;
-       }else{
-              $this->throwException(411,"Invalid OTP");
-       }
+    private function generateOTP($mobile){
+        if(isset($mobile)){
+            if($mobile == '9999900001'){
+                $otp = '4321';
+            }
+            else{
+                $date           = date('Y-m-d H:i:s');
+                $appHelper      = new AppHelper();
+                $otp            = $appHelper->getUniqueRandomNum();
+                $arrParams      = array(
+                    array('name' => 'otp', 'value' => $otp),
+                );
+                $msg         = "Your OTP is ".$otp.". Team BigCity";
+                $message     = new Message();
+                $message->sendSMS($mobile,$msg,'Login SMS','gen_otp_sms');
+            }
+            return $otp;
+        }
+        else {
+            // Validation error
+            throw new HttpException(422, json_encode("Permission denied."));
+        }
     }
-  
-  public function actionEditprofile(){
-    $pho_no=Yii::$app->request->post('pho_no');
-    $objCustomer=new Customer();
-   $token= $objCustomer->getBearerAccessToken();
-    if(isset($token)){
-        $customerDetails=$objCustomer->getCustomerdetails($token,$pho_no);
-        $access_token_expriy=$customerDetails['access_token_expiry'];
-            if($access_token_expriy !=null || $access_token_expriy>date('Y-m-d H:i:s')){
-                $address=Yii::$app->request->post('address');
-                $email=Yii::$app->request->post('email'); 
-                $customer_name=Yii::$app->request->post('customer_name'); 
-                $dob=Yii::$app->request->post('dob'); 
-                $city=Yii::$app->request->post('city'); 
-                $pincode=Yii::$app->request->post('pincode'); 
-                $gender=Yii::$app->request->post('gender');  
-                $state_id=Yii::$app->request->post('state_id'); 
-                $resCustomer=$objCustomer->editCustomerProfile($objCustomer,$pho_no,$address,$email,$customer_name,$dob,$city,$pincode,$gender,$state_id);
+
+    public function actionVerifyotp()
+    {
+        $appHelper  = new AppHelper();
+        $date       = date('Y-m-d H:i:s');
+        if(Yii::$app->request->post('customer_id') && Yii::$app->request->post('otp')){
+            $customer_id = Yii::$app->request->post('customer_id');
+            $otp         = Yii::$app->request->post('otp');
+
+            $customerLogin = new Customer_login_history();
+            $logindetails  = $customerLogin->verifyOTP($customer_id,$otp);
+
+            if(isset($logindetails['id']) && !empty($logindetails['id'])){
+                $customerModel      = new Customer();
+                $token_expiry   = date('Y-m-d H:i:s', strtotime("+30 days", strtotime($date)));
+                $customerModel->generateAccessToken();
+                $updateCustomers = Customer::updateAll(['access_token' =>$customerModel->access_token,'access_token_expiry'=>$token_expiry, 'updated_date' => $date], ['id' => $customer_id]);
+
+                $ipAddress= Yii::$app->request->userIP;
+                $updateCustomerLogin = Customer_login_history::updateAll(['access_token' =>$customerModel->access_token,'status'=> 1, 'ip_address' => $ipAddress, 'loginat' => $date], ['customer_id' => $customer_id, 'otp' => $otp]);
+                $responseData = [
+                    'customer_id'           => $customer_id,
+                    'customer_name'         => $logindetails['customer_name'] != '' ? $logindetails['customer_name'] : '',
+                    'customer_phone_number' => $logindetails['phone_number'] != '' ? $logindetails['phone_number'] : '',
+                    'access_token'          => $customerModel->access_token,
+                    'role'                  => 'customer'
+                ];
+            }else{
+                $responseData = [
+                    'verified'     => false,
+                    'message'      => 'Please enter correct OTP to proceed',
+                ];
+            }
+            return $responseData;
+        }
+        else{
+            throw new HttpException(422, json_encode("Customer ID & OTP both are required!!."));
+        }
+
+    }
+
+    public function actionEditprofile()
+    {
+        $pho_no = Yii::$app->request->post('pho_no');
+        $objCustomer = new Customer();
+        $token = $this->getBearerAccessToken();
+        if (isset($token)) {
+            $customerDetails = $objCustomer->getCustomerdetails($token, $pho_no);
+            $access_token_expriy = $customerDetails['access_token_expiry'];
+            if ($access_token_expriy != null || $access_token_expriy > date('Y-m-d H:i:s')) {
+                $address = Yii::$app->request->post('address');
+                $email = Yii::$app->request->post('email');
+                $customer_name = Yii::$app->request->post('customer_name');
+                $dob = Yii::$app->request->post('dob');
+                $city = Yii::$app->request->post('city');
+                $pincode = Yii::$app->request->post('pincode');
+                $gender = Yii::$app->request->post('gender');
+                $state_id = Yii::$app->request->post('state_id');
+                $resCustomer = $objCustomer->editCustomerProfile($objCustomer, $pho_no, $address, $email, $customer_name, $dob, $city, $pincode, $gender, $state_id);
                 return   $resCustomer;
-            }else{
+            } else {
                 $this->throwException(401, 'Unauthorized user access!');
             }
-    }else{
-        $this->throwException(422, 'The requested access_token could not be found.');
+        } else {
+            $this->throwException(422, 'The requested access_token could not be found.');
+        }
     }
-  }
 
-  public function actionWishlist(){
-   $pho_no= Yii::$app->request->post(name:'pho_no');
-   $objCustomer=new Customer();
-   $token= $objCustomer->getBearerAccessToken();
-    if(isset($token)){
-        $customerDetails=$objCustomer->getCustomerdetails($token,$pho_no);
-        $access_token_expriy=$customerDetails['access_token_expiry'];
-            if($access_token_expriy !=null || $access_token_expriy>date('Y-m-d H:i:s')){
-               $resturant_id= Yii::$app->request->post(name:'resturant_id');
-               $offer_id= Yii::$app->request->post(name:'offer_id');
-               $objWishlist=new Customer_wishlist();
-            
-                $resWishlist['details']=$objWishlist->customer_wishlist_resturant($resturant_id,$offer_id);
-                $c_id=$objWishlist->get_customer_id($objCustomer,$pho_no);  
-               $resWishlist['message']=$objWishlist->customer_wishlist($objWishlist,$c_id,$resturant_id);
-               return $resWishlist;
-            }else{
+    public function actionToggleWishlist()
+    {
+        $objCustomer = new Customer();
+        $token = $this->getBearerAccessToken(); 
+        if (isset($token)) {
+            $customer_id = Yii::$app->request->post('customer_id');
+            $customerDetails = $objCustomer->getCustomerdetails($token, $customer_id);
+
+            $access_token_expriy = $customerDetails['access_token_expiry'];
+            if ($access_token_expriy != null || $access_token_expriy > date('Y-m-d H:i:s')) {
+                $restaurant_offer_id = Yii::$app->request->post('restaurant_offer_id');
+                $objWishlist = new Customer_wishlist();
+
+                $checkWishlist = $objWishlist->check_whitelist($customer_id,$restaurant_offer_id);
+
+                //check whether whishlist is existing 
+                if(!empty($checkWishlist) || $checkWishlist != ''){
+                    $delWishList = Customer_wishlist::find()
+                            ->where(['customer_id'=>$customer_id])
+                            ->andwhere(['restaurant_offer_id'=>$restaurant_offer_id])
+                            ->one()
+                            ->delete();
+                    if(isset($delWishList)){
+                        $responseData = [
+                            'customer_id'  => $customer_id,
+                            'message'      => 'Removed from favourites!',
+                            'status'       => 'inactive'
+                        ];
+                    }
+                }else{
+                    $objWishlist->customer_id=$customer_id;
+                    $objWishlist->restaurant_offer_id=$restaurant_offer_id;
+                    $objWishlist->created_date=date('Y-m-d H:i:s');
+                    if($objWishlist->save()){
+                        $responseData = [
+                            'whistlist_id' => Yii::$app->db->getLastInsertID(),
+                            'customer_id'  => $customer_id,
+                            'message'      => 'Your offer is saved in your favourites for future usage!',
+                            'status'       => 'active'
+                        ];
+                    }
+                }
+                return $responseData;
+
+            } else {
                 $this->throwException(401, 'Unauthorized user access!');
             }
-    }else{
-        $this->throwException(411,'The requested access_token could not be found.');
+        } else {
+            $this->throwException(411, 'The requested access_token could not be found.');
+        }
     }
-   
-  }
 
+    public function actionRedeemOffer(){
+        $pho_no = Yii::$app->request->post('pho_no');
+        $objCustomer = new Customer();
+        $token = $this->getBearerAccessToken();
+        if (isset($token)) {
+            $customerDetails = $objCustomer->getCustomerdetails($token, $pho_no);
+            $access_token_expriy = $customerDetails['access_token_expiry'];
+            if ($access_token_expriy != null || $access_token_expriy > date('Y-m-d H:i:s')) {
+                //1. User will scan the qr code, unique_code will be sent as post data 
+            } else {
+                $this->throwException(401, 'Unauthorized user access!');
+            }
+        } else {
+            $this->throwException(422, 'The requested access_token could not be found.');
+        }
+    }
 
     /**
      * Generic function to throw HttpExceptions
@@ -237,5 +348,4 @@ class CustomerController extends ActiveController
     {
         throw new \yii\web\HttpException($errCode, $errMsg);
     }
-
 }

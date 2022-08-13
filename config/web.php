@@ -86,6 +86,14 @@ $config = [
 
                         'POST verifyotp' => 'verifyotp',
                         'OPTIONS verifyotp' => 'options',
+
+                        'POST restaurant-details' => 'restaurant-details',
+                        'OPTIONS restaurant-details' => 'options',
+
+                        'POST offer-details' => 'offer-details',
+                        'OPTIONS offer-details' => 'options',
+
+                        
                         
                     ],
                 ],
@@ -108,9 +116,11 @@ $config = [
                         'POST editprofile' => 'editprofile',
                         'OPTIONS editprofile' => 'options',
 
-                        'POST wishlist' => 'wishlist',
-                        'OPTIONS wishlist' => 'options',
-                        
+                        'POST toggle-wishlist' => 'toggle-wishlist',
+                        'OPTIONS toggle-wishlist' => 'options',
+
+                        'POST redeem-offer' => 'redeem-offer',
+                        'OPTIONS redeem-offer' => 'options',
                     ],
                 ],
                 [

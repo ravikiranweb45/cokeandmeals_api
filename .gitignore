@@ -57,7 +57,15 @@ Thumbs.db
 
 # composer vendor dir
 /api/vendor
+/vendor
 /api/vendor.zip
+/vendor.zip
+
+/tests
+/runtime
+
+/api/tests
+/api/runtime
 
 # composer itself is not needed
 composer.phar
