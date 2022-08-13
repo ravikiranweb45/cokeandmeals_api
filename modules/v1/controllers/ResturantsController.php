@@ -27,7 +27,6 @@ class ResturantsController extends ActiveController
     public function __construct($id, $module, $config = [])
     {
         parent::__construct($id, $module, $config);
-
     }
 
     public function actions()
@@ -51,10 +50,12 @@ class ResturantsController extends ActiveController
             'class' => \yii\filters\VerbFilter::className(),
             'actions' => [
                 'list' => ['get'],
-                'liststate'=>['get'],
-                'nearbyrestaurants'=>['post'],
-                'login'=>['post'],
-                'verifyotp'=>['post'],
+                'liststate' => ['get'],
+                'nearbyrestaurants' => ['post'],
+                'login' => ['post'],
+                'verifyotp' => ['post'],
+                'restaurant-details' => ['post'],
+                'offer-details' => ['post']
             ],
         ];
 
@@ -77,7 +78,7 @@ class ResturantsController extends ActiveController
         // re-add authentication filter
         $behaviors['authenticator'] = $auth;
         // avoid authentication on CORS-pre-flight requests (HTTP OPTIONS method)
-        $behaviors['authenticator']['except'] = ['options', 'list','liststate', 'create-state', 'update-state', 'delete-state','import-state', 'get-state-asc','nearbyrestaurants','login','verifyotp'];
+        $behaviors['authenticator']['except'] = ['options', 'list', 'liststate', 'create-state', 'update-state', 'delete-state', 'import-state', 'get-state-asc', 'nearbyrestaurants', 'login', 'verifyotp','restaurant-details','offer-details'];
 
         // setup access
         $behaviors['access'] = [
@@ -86,7 +87,7 @@ class ResturantsController extends ActiveController
             'rules' => [
                 [
                     'allow' => true,
-                    'actions' => ['index', 'view', 'create', 'update', 'delete', 'List'],
+                    'actions' => ['index', 'view', 'create', 'update', 'delete', 'List', 'restaurant-details', 'offer-details'],
                     'roles' => ['admin', 'manageUsers'],
                 ],
                 [
@@ -133,176 +134,59 @@ class ResturantsController extends ActiveController
         return $bearer;
     }
 
-    
-
-    
-
-    public function actionListstate()
-    {   $id= $id=Yii::$app->request->get(name:'id');
-        $objState=new State();
-        if($id){
-            $resState=$objState->find()->where(['id'=>$id])->andWhere(['status'=>1])->all();
-           return $resState;
-        }else{
-            $resState=$objState->find()->andWhere(['status'=>1])->all();
-           return $resState;
-        }
-    }
-
-
-    public function actionNearbyrestaurants(){
-        $latitude=Yii::$app->request->post('latitude');
-        $longitude=Yii::$app->request->post('longitude');
+    public function actionNearbyrestaurants()
+    {
+        $latitude = Yii::$app->request->post('latitude');
+        $longitude = Yii::$app->request->post('longitude');
         //$range = '';
         //$page = '';
-        $objResturentOffer=new Restaurant_offer();
-        // if($objResturentOffer->validateLatLong($latitude,$longitude)==1){
-        //     $resListRestaurants=$objResturentOffer->getNearByResrestaurants($latitude,$longitude);
-        // $rest_details=array();
-        // if(!empty($resListRestaurants)){
-        //     foreach($resListRestaurants as $val){
-        //         $rest_Id=$val['id'];   
-        //         $resResturantOffer=$objResturentOffer->getResturantOffers($rest_Id);
-        //         if(!empty($resResturantOffer)){
-        //             $val["offers"]=$resResturantOffer;
-        //             array_push($rest_details,$val );
-        //         }else{
-        //             return "No Resturants Found";
-        //         }
-        //     }
-        //     return $rest_details;
-        // }else{
-        //     $this->throwException(411,"Invalid Latitude And Longitude");
-        // }
-        $resListRestaurants=$objResturentOffer->getNearByResrestaurants($latitude,$longitude);
-        $rest_details=array();
-        if(!empty($resListRestaurants)){
-            foreach($resListRestaurants as $val){
-                $rest_Id=$val['id'];   
-                $resResturantOffer=$objResturentOffer->getResturantOffers($rest_Id);
-                if(!empty($resResturantOffer)){
-                    $val["offers"]=$resResturantOffer;
-                    array_push($rest_details,$val );
-                }else{
-                    return "No Resturants Found";
+        $objResturentOffer = new Restaurant_offer();
+        $resListRestaurants = $objResturentOffer->getNearByResrestaurants($latitude, $longitude);
+        $rest_details = array();
+        if (!empty($resListRestaurants)) {
+            foreach ($resListRestaurants as $val) {
+                $rest_Id = $val['id'];
+                $resResturantOffer = $objResturentOffer->getResturantOffers($rest_Id);
+                if (!empty($resResturantOffer)) {
+                    $val["offers"] = $resResturantOffer;
+                    array_push($rest_details, $val);
+                } else {
+                    $val["offers"] = "No offers found";
+                    array_push($rest_details, $val);
                 }
             }
             return $rest_details;
-        }else{
-            $this->throwException(411,"Thier is no restaurants near by you");
-        }
-    } 
-  
-    public function actionImportState()
-    {
-
-        //installizing for the saving
-
-        $success_saving_all = false;
-
-        // Current Date and Time;
-
-        $date = date('Y-m-d H:i:s');
-
-        // Data from the post excel.
-
-        // Data from the post excel.
-
-        $state = new State();
-
-        // Add the data to the attributes
-
-        $state->attributes = \yii::$app->request->post();
-
-        $data = $state->excel_data;
-
-        $connection = \Yii::$app->db;
-
-        if (!empty($data)) {
-
-            /*
-             * Create Model of the state model
-             * if it is present skip, else insert
-             * create the db object of the user task model
-             */
-
-            $transaction = $connection->beginTransaction();
-            /*
-             * all state (if any) is valid. Save it all in one transactions.
-             *
-             */
-            try {
-
-                foreach ($data as $key => $value) {
-
-                    $isExits = State::find()
-                        ->where(['state_name' => $value['State Name']])
-                        ->one();
-
-                    if ($isExits === null) {
-
-                        $stateModel = new State();
-
-                        $stateModel->status = 1;
-
-                        $stateModel->state_code = $value['State Code'];
-
-                        $stateModel->state_name = $value['State Name'];
-
-                        $region = Region::find()
-                                    ->where(['region_name' => $value['Region Name']])
-                                  ->one();
-
-                        $stateModel->region_id = $region->id;
-
-                        $stateModel->created_date = $date;
-
-                        $stateModel->updated_date = $date;
-
-                        $isValid = $stateModel->validate();
-
-                        if ($isValid) {
-
-                            $stateModel->save();
-
-                            $success_saving_all = true;
-
-                            // here, it means no exception was thrown during saving of user and its details (from the DB, for example).
-
-                            // good - now commit it all...:
-                        }
-                    } else {
-                        continue;
-                    }
-
-                }
-
-                $transaction->commit();
-
-            } catch (Exception $e) {
-
-                // oops, saving user or its details failed. rollback, report us, and show the user an error.
-                $transaction->rollback();
-
-                $success_saving_all = false;
-            }
-            if ($success_saving_all) {
-                //Set defalut response code 200 with the message;
-                $response = \Yii::$app->getResponse();
-                $response->setStatusCode(200);
-                $responseData = [
-                    'message' => 'State(s) imported successfully',
-                ];
-
-                return $responseData;
-            } else {
-                // Set the response and exit;
-                $this->throwException(500, "Failed to import the states");
-            }
-
         } else {
-            $this->throwException(404, "Data Not Found");
+            $this->throwException(411, "Thier is no restaurants near by you");
         }
+    }
+
+    public function actionRestaurantDetails(){
+        $restaurant_id = Yii::$app->request->post('restaurant_id');
+        $rest_details = array();
+        $objResturentOffer = new Restaurant_offer();
+        $resListRestaurants = $objResturentOffer->getRestaurantDetails($restaurant_id);
+        if(!empty($resListRestaurants) || $resListRestaurants != ''){
+            $resResturantOffer = $objResturentOffer->getResturantOffers($restaurant_id);
+            if (!empty($resResturantOffer)) {
+                $resListRestaurants["offers"] = $resResturantOffer;
+                array_push($rest_details, $resListRestaurants);
+            } else {
+                $resListRestaurants["offers"] = "No offers found";
+                array_push($rest_details, $resListRestaurants);
+            }
+            return $rest_details;
+        }else{
+            $this->throwException(422, "Restaurant unavailable!!");
+        }
+    }
+
+    public function actionOfferDetails(){
+        $restaurant_offer_id = Yii::$app->request->post('restaurant_offer_id');
+
+        $objResturentOffer = new Restaurant_offer();
+        $resListRestaurants = $objResturentOffer->getOfferDetails($restaurant_offer_id);
+        return $resListRestaurants;
     }
 
     /**
@@ -315,15 +199,15 @@ class ResturantsController extends ActiveController
     {
         throw new \yii\web\HttpException($errCode, $errMsg);
     }
-     
-    public function validateLatLong($latitude,$longitude){
-            // $lat_pattern  = '/\A[+-]?(?:90(?:\.0{1,18})?|\d(?(?<=9)|\d?)\.\d{1,18})\z/x';
-            // $long_pattern = '/\A[+-]?(?:180(?:\.0{1,18})?|(?:1[0-7]\d|\d{1,2})\.\d{1,18})\z/x';
-            $lat_pattern='/^[+-]?(90|[1-8][0-9][.][0-9]{1,20}|[0-9][.][0-9]{1,20})$/';
-            $long_pattern='/^-?(180|1[1-7][0-9][.][0-9]{1,20}|[1-9][0-9][.][0-9]{1,20}|[0-9][.][0-9]{1,20})$/';
-            if(preg_match($lat_pattern, $lat)==1 && preg_match($long_pattern, $long)==1){
-            return 1;
-            }
-    }
 
+    // public function validateLatLong($latitude, $longitude)
+    // {
+    //     // $lat_pattern  = '/\A[+-]?(?:90(?:\.0{1,18})?|\d(?(?<=9)|\d?)\.\d{1,18})\z/x';
+    //     // $long_pattern = '/\A[+-]?(?:180(?:\.0{1,18})?|(?:1[0-7]\d|\d{1,2})\.\d{1,18})\z/x';
+    //     $lat_pattern = '/^[+-]?(90|[1-8][0-9][.][0-9]{1,20}|[0-9][.][0-9]{1,20})$/';
+    //     $long_pattern = '/^-?(180|1[1-7][0-9][.][0-9]{1,20}|[1-9][0-9][.][0-9]{1,20}|[0-9][.][0-9]{1,20})$/';
+    //     if (preg_match($lat_pattern, $lat) == 1 && preg_match($long_pattern, $long) == 1) {
+    //         return 1;
+    //     }
+    // }
 }

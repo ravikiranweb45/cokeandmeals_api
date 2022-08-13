@@ -9,20 +9,14 @@ class AppHelper
 {
 
     public function getUniqueRandomNum(){
-        function make_seed()
-        {
-            list($usec, $sec) = explode(' ', microtime());
-            return $sec + $usec * 1000000;
-        }
-        srand(make_seed());
-        $randval = mt_rand(100000,999999);
+        $randval = mt_rand(1000,9999);
         return $randval;
     }
 
     public function getDecryptdata($string){
 
         $privatefile = realpath(Yii::$app->basePath) .'/web/uploads/files/rsa_1024_priv.pem';
-	$fopen_private = fopen($privatefile,"r");
+	    $fopen_private = fopen($privatefile,"r");
         $private_key = fread($fopen_private,8192);
         fclose($fopen_private);
         $pkey_private = openssl_pkey_get_private($private_key);
@@ -62,4 +56,4 @@ class AppHelper
         return $decrypted;
     }
 
-    }
+}

@@ -56,8 +56,14 @@ Thumbs.db
 Thumbs.db
 
 # composer vendor dir
-/api/vendor
-/api/vendor.zip
+vendor/
+vendor.zip/
+
+/tests
+/runtime
+
+tests/
+runtime/
 
 # composer itself is not needed
 composer.phar
@@ -72,13 +78,9 @@ phpunit.phar
 # local phpunit config
 /api/phpunit.xml
 
-/api/tests/_output/*
-/api/tests/_support/_generated
-/api/runtime
-
-
-# Db Config file
-/api/config/db.php
+tests/_output/*
+tests/_support/_generated
+runtime/
 
 #sftp
 /api/.vscode/sftp.json
@@ -91,5 +93,4 @@ phpunit.phar
 
 
 # Db Config file
-/api/config/db.php
-/api/config/db.php
+config/db.php
